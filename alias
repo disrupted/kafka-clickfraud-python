@@ -1,0 +1,2 @@
+alias producer='docker exec -it kafka_kafka_1 kafka-console-producer --bootstrap-server localhost:9092 --topic quickstart-events'
+alias consumer='docker exec -it kafka_kafka_1 kafka-console-consumer --bootstrap-server localhost:9092 --topic quickstart-events'
