@@ -55,7 +55,7 @@ pip install -U faust
 
 requires Python 3.7 or later
 
-## Usage example
+## Usage
 
 Start the Zookeeper & Kafka server stack
 
@@ -68,3 +68,5 @@ Open a separate shell and start the app
 ```sh
 python3 faustapp.py worker -l info
 ```
+
+Use `kafka-console-consumer` or another client to subscribe to the Kafka topics `streams-clickfraud-input` and `streams-clickfraud-output` to monitor the randomly generated Click events and the calculated Click fraud score as messages from the application.
