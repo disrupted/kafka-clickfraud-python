@@ -1,0 +1,1 @@
+"""ClickFraud Kafka application."""

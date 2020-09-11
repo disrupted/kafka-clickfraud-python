@@ -1,3 +1,5 @@
+from dataclasses import asdict, dataclass
+
 messages = (
     {
         "cookie": "299a0be4a5a79e6a59fdd251b19d78bb",
@@ -10,3 +12,13 @@ messages = (
         "isFake": False,
     },
 )
+
+
+@dataclass
+class Statistic:
+    campaign: str
+    clickFraud: float
+
+
+stat = Statistic(campaign="test", clickFraud=0.5)
+print(asdict(stat))
