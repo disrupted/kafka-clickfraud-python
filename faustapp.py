@@ -1,9 +1,17 @@
 import datetime
-from dataclasses import dataclass
+import random
+import uuid
+from dataclasses import asdict, dataclass
 
 import faust
 
-from const import KAFKA_INPUT_TOPIC, KAFKA_OUTPUT_TOPIC, KAFKA_SERVER_HOST
+from const import (
+    CAMPAIGNS,
+    CLICK_INTERVAL,
+    KAFKA_INPUT_TOPIC,
+    KAFKA_OUTPUT_TOPIC,
+    KAFKA_SERVER_HOST,
+)
 
 
 @dataclass
@@ -29,34 +37,50 @@ app = faust.App(
 click_topic = app.topic(KAFKA_INPUT_TOPIC, value_type=Click, partitions=1)
 destination_topic = app.topic(KAFKA_OUTPUT_TOPIC)
 
-counts = app.Table("click_counts", partitions=1, default=int)
+total_counts = app.Table("total_counts", partitions=1, default=int)
 bot_counts = app.Table("bot_counts", partitions=1, default=int)
+
+
+def timestamp():
+    """Generate timestamp in military ISO 8601 format."""
+    return (
+        datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    )
+
+
+def generate_message():
+    """Generate a new Click event with current timestamp."""
+    click = Click(
+        cookie=uuid.uuid4().hex,
+        campId=random.choice(CAMPAIGNS),
+        isFake=random.getrandbits(1),
+        timestamp=timestamp(),
+    )
+    return click
+
+
+@app.timer(CLICK_INTERVAL)
+async def populate():
+    message = asdict(generate_message())
+    await click_topic.send(value=message)
 
 
 @app.agent(click_topic, sink=[destination_topic])
 async def count_click(clicks):
     async for click in clicks.group_by(Click.campId):
         print(click)
-        counts[click.campId] += 1
+        total_counts[click.campId] += 1
         if click.isFake:
             bot_counts[click.campId] += 1
         message = Statistic(
-            campaign=click.campId, clickFraud=await calculate_click_fraud(click.campId)
+            campaign=click.campId, clickFraud=calculate_click_fraud(click.campId)
         )
         print(message)
         yield message
 
 
-async def get_total_count(campId):
-    return counts[campId]
-
-
-async def get_bot_count(campId):
-    return bot_counts[campId]
-
-
-async def calculate_click_fraud(campId):
-    return await get_bot_count(campId) / await get_total_count(campId)
+def calculate_click_fraud(campId):
+    return bot_counts[campId] / total_counts[campId]
 
 
 if __name__ == "__main__":
